@@ -1,0 +1,2 @@
+# Stockgpt
+Automated stock watchlist
