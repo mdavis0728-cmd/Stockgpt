@@ -1,0 +1,58 @@
+import os
+import subprocess
+from datetime import datetime
+import pandas as pd
+import yfinance as yf
+import openai
+from discord_webhook import DiscordWebhook
+
+# --------------------------
+# Load API keys from GitHub Secrets
+# --------------------------
+openai.api_key = os.environ.get('OPENAI_API_KEY')
+DISCORD_WEBHOOK_URL = os.environ.get('DISCORD_WEBHOOK_URL')
+
+# --------------------------
+# Example Stock GPT Logic
+# Replace this section with your real stock analysis
+# --------------------------
+tickers = ['AAPL', 'MSFT', 'GOOG', 'TSLA', 'NVDA']  # Replace with your dynamic list
+scores = [95, 90, 88, 85, 80]  # Dummy scores
+top10 = pd.DataFrame({'Ticker': tickers[:10], 'Score': scores[:10]})
+
+# --------------------------
+# Save CSV with timestamp
+# --------------------------
+date_str = datetime.now().strftime("%Y-%m-%d")
+filename = f"watchlist_{date_str}.csv"
+top10.to_csv(filename, index=False)
+
+# --------------------------
+# Git commit & push CSV
+# --------------------------
+# GitHub Actions will provide GH_PAT secret
+GH_PAT = os.environ.get('GH_PAT')
+subprocess.run(["git", "config", "--global", "user.email", "you@example.com"])
+subprocess.run(["git", "config", "--global", "user.name", "YourName"])
+subprocess.run(["git", "remote", "set-url", "origin", f"https://x-access-token:{GH_PAT}@github.com/YourUsername/stock-gpt.git"])
+subprocess.run(["git", "add", filename])
+subprocess.run(["git", "commit", "-m", f"Add watchlist for {date_str}"])
+subprocess.run(["git", "push", "origin", "main"])
+
+# --------------------------
+# Discord notification
+# --------------------------
+if DISCORD_WEBHOOK_URL:
+    webhook = DiscordWebhook(url=DISCORD_WEBHOOK_URL, content=f"Stock GPT Watchlist for {date_str} uploaded to GitHub!")
+    webhook.execute()
+
+# --------------------------
+# Optional: GPT analysis example
+# --------------------------
+prompt = f"Analyze these top stocks: {top10['Ticker'].tolist()}"
+response = openai.ChatCompletion.create(
+    model="gpt-4",
+    messages=[{"role": "user", "content": prompt}],
+    max_tokens=200
+)
+print(response['choices'][0]['message']['content'])
